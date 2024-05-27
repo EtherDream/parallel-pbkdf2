@@ -64,7 +64,7 @@
       }
       const buf = await crypto.subtle.deriveBits(opts, baseKey, 256)
       const bin = new Uint8Array(buf)
-      postMessage({id, result: bin})
+      postMessage({id, dk: bin})
     }
   
     const workerCode = 'onmessage=' + workerOnMessage
@@ -80,8 +80,8 @@
       let count = 0
   
       const handler = async (e) => {
-        const {id, result} = e.data
-        dkConcat.set(result, id * 32)
+        const {id, dk} = e.data
+        dkConcat.set(dk, id * 32)
   
         if (++count === parallel) {
           const outBuf = await crypto.subtle.digest('SHA-256', dkConcat)
@@ -149,7 +149,7 @@
 🥉 Chrome  (parallel ×, performance √)
 
 
-🗓️ Update: 2024-05-27
+🗓️ Update: 2024-05-27 <a href="https://github.com/EtherDream/parallel-pbkdf2">[GitHub]</a> 
   </pre>
 </body>
 </html>
