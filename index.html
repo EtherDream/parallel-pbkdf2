@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>Parallel PBKDF2</title>
+  <base target="_blank">
+  <style>
+    body, input {
+      font-family: monospace;
+      font-size: 15px;
+    }
+    label {
+      display: inline-block;
+      width: 5em;
+    }
+    input {
+      width: 50em;
+    }
+  </style>
+</head>
+<body>
+  <h1>Parallel PBKDF2</h1>
+  <div>
+    <label>SiteId:</label>
+    <input id="txtUuid" type="text" value="B3035564-F1B3-45F0-813E-4AED36B5D643">
+  </div>
+  <div>
+    <label>User:</label>
+    <input id="txtUser" type="text" value="Alice">
+  </div>
+  <div>
+    <label>Pwd:</label>
+    <input id="txtPwd" type="text" value="hello1234">
+  </div>
+  <div>
+    <label>Iter:</label>
+    <input id="txtIter" type="number" value="1000000">
+  </div>
+  <div>
+    <label>Thread:</label>
+    <input id="txtThread" type="number" value="8" min="1" max="255">
+  </div>
+  <div>
+    <button id="btnRun">Run</button>
+  </div>
+  <div>
+    <label>Result:</label>
+    <input id="txtResult" type="text">
+  </div>
+  <div>
+    <label>Time:</label>
+    <span id="txtTime">-</span>
+  </div>
+  <script>
+    const workerOnMessage = async (e) => {
+      const {pwd, salt, iter, id} = e.data
+      const baseKey = await crypto.subtle.importKey('raw', pwd, 'PBKDF2', false, ['deriveBits'])
+      const opts = {
+        name: 'PBKDF2',
+        hash: 'SHA-256',
+        salt: salt,
+        iterations: iter,
+      }
+      const buf = await crypto.subtle.deriveBits(opts, baseKey, 256)
+      const bin = new Uint8Array(buf)
+      postMessage({id, result: bin})
+    }
+  
+    const workerCode = 'onmessage=' + workerOnMessage
+    const workerBlob = new Blob([workerCode])
+    const workerUrl = URL.createObjectURL(workerBlob)
+  
+  
+    function pbkdf2(password, salt, iter, parallel) {
+      const pwdBuf = new TextEncoder().encode(password)
+      const saltBuf = new TextEncoder().encode('?' + salt)
+  
+      const dkConcat = new Uint8Array(32 * parallel)
+      let count = 0
+  
+      const handler = async (e) => {
+        const {id, result} = e.data
+        dkConcat.set(result, id * 32)
+  
+        if (++count === parallel) {
+          const outBuf = await crypto.subtle.digest('SHA-256', dkConcat)
+          const outBin = new Uint8Array(outBuf)
+          callback(outBin)
+        }
+      }
+  
+      for (let i = 0; i < parallel; i++) {
+        const worker = new Worker(workerUrl)
+        worker.onmessage = handler
+        saltBuf[0] = i
+        worker.postMessage({
+          pwd: pwdBuf,
+          salt: saltBuf,
+          iter: 1e6,
+          id: i,
+        })
+      }
+  
+      let callback
+      return new Promise((resolve) => {
+        callback = resolve
+      })
+    }
+
+    //
+    // demo
+    //
+    function bin2hex(bin) {
+      return hex = [...bin]
+        .map(v => v.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase()
+    }
+
+    btnRun.onclick = async () => {
+      const siteuuid = txtUuid.value
+      const username = txtUser.value
+      const password = txtPwd.value
+      const iter = +txtIter.value
+      const thread = +txtThread.value
+
+      const salt = siteuuid + username
+      const t0 = Date.now()
+      const key = await pbkdf2(password, salt, iter, thread)
+      const t1 = Date.now()
+
+      txtResult.value = bin2hex(key)
+      txtTime.textContent = (t1 - t0) + 'ms'
+    }
+  </script>
+
+  <pre>
+
+💡 Algorithm:
+
+  dk[i] = pbkdf2_sha256(pwd, i + siteid + user, iter)
+
+  reuslt = sha256(dk[0] + dk[1] + ... + dk[thread-1])
+
+
+🏅 Safari  (parallel ✔️, performance ✔️)
+🥈 FireFox (parallel ✔️, performance ×)
+🥉 Chrome  (parallel ×, performance ✔️)
+
+
+🗓️ Update: 2024-05-27
+  </pre>
+</body>
+</html>
