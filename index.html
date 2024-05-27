@@ -35,14 +35,14 @@
   </div>
   <div>
     <label>Iter:</label>
-    <input id="txtIter" type="number" value="1000000">
+    <input id="txtIter" type="number" value="1e6">
   </div>
   <div>
     <label>Thread:</label>
     <input id="txtThread" type="number" value="8" min="1" max="255">
   </div>
   <div>
-    <button id="btnRun">Run</button>
+    <button id="btnRun">Hash</button>
   </div>
   <div>
     <label>Result:</label>
@@ -139,14 +139,14 @@
 
 💡 Algorithm:
 
-  dk[i] = pbkdf2_sha256(pwd, i + siteid + user, iter)
+   dk[i] = pbkdf2_sha256(pwd, i + siteid + user, iter)
 
-  reuslt = sha256(dk[0] + dk[1] + ... + dk[thread-1])
+   reuslt = sha256(dk[0] + dk[1] + ... + dk[thread-1])
 
 
-🏅 Safari  (parallel ✔️, performance ✔️)
-🥈 FireFox (parallel ✔️, performance ×)
-🥉 Chrome  (parallel ×, performance ✔️)
+🏅 Safari  (parallel √, performance √)
+🥈 FireFox (parallel √, performance ×)
+🥉 Chrome  (parallel ×, performance √)
 
 
 🗓️ Update: 2024-05-27
